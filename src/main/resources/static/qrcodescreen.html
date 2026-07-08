@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CreateQRCODE</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <style>
+        :root{
+            --bg: #F2F2EE;
+            --ink: #14151A;
+            --ink-soft: #6B6D76;
+            --accent: #D62839;
+            --accent-soft: rgba(214,40,57,0.08);
+            --line: #DEDED6;
+            --panel: #FFFFFF;
+            --mono: 'JetBrains Mono', ui-monospace, monospace;
+            --sans: 'Manrope', system-ui, sans-serif;
+        }
+
+        *{box-sizing:border-box;}
+
+        html,body{
+            margin:0;
+            padding:0;
+            background:var(--bg);
+            color:var(--ink);
+            font-family:var(--sans);
+            min-height:100vh;
+        }
+
+        body{
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:32px 20px;
+        }
+
+        .wrap{
+            width:100%;
+            max-width:480px;
+        }
+
+        header{
+            margin-bottom:40px;
+            text-align:left;
+        }
+
+        .eyebrow{
+            font-family:var(--mono);
+            font-size:12px;
+            letter-spacing:0.14em;
+            text-transform:uppercase;
+            color:var(--accent);
+            margin:0 0 10px 0;
+            display:flex;
+            align-items:center;
+            gap:8px;
+        }
+
+        .eyebrow::before{
+            content:"";
+            width:6px;
+            height:6px;
+            background:var(--accent);
+            border-radius:1px;
+            display:inline-block;
+        }
+
+        .wordmark{
+            font-family:var(--mono);
+            font-weight:700;
+            font-size:28px;
+            letter-spacing:-0.02em;
+            margin:0 0 8px 0;
+        }
+        .wordmark span{ color:var(--accent); }
+
+        .tagline{
+            font-size:15px;
+            color:var(--ink-soft);
+            margin:0;
+            line-height:1.5;
+        }
+
+        form{
+            display:flex;
+            gap:8px;
+            margin-bottom:28px;
+        }
+
+        input[type="text"]{
+            flex:1;
+            min-width:0;
+            padding:14px 16px;
+            font-family:var(--mono);
+            font-size:14px;
+            color:var(--ink);
+            background:var(--panel);
+            border:1px solid var(--line);
+            border-radius:10px;
+            outline:none;
+            transition:border-color .15s ease, box-shadow .15s ease;
+        }
+
+        input[type="text"]::placeholder{ color:#B4B5AE; }
+
+        input[type="text"]:focus{
+            border-color:var(--accent);
+            box-shadow:0 0 0 3px var(--accent-soft);
+        }
+
+        button{
+            font-family:var(--sans);
+            font-weight:700;
+            font-size:14px;
+            color:#fff;
+            background:var(--ink);
+            border:none;
+            border-radius:10px;
+            padding:0 20px;
+            cursor:pointer;
+            transition:background .15s ease, transform .1s ease;
+        }
+
+        button:hover{ background:#000; }
+        button:active{ transform:scale(0.97); }
+
+        button:focus-visible, input:focus-visible{
+            outline:2px solid var(--accent);
+            outline-offset:2px;
+        }
+
+        .error{
+            font-family:var(--mono);
+            font-size:12.5px;
+            color:var(--accent);
+            margin:-18px 0 20px 2px;
+            min-height:16px;
+        }
+
+        /* --- viewfinder / output --- */
+        .stage{
+            position:relative;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            padding:28px;
+            background:var(--panel);
+            border-radius:14px;
+            border:1px solid var(--line);
+            min-height:280px;
+        }
+
+        .stage.empty .placeholder{ display:flex; }
+        .stage.empty .viewfinder{ display:none; }
+        .stage:not(.empty) .placeholder{ display:none; }
+        .stage:not(.empty) .viewfinder{ display:block; }
+
+        .placeholder{
+            flex-direction:column;
+            align-items:center;
+            gap:10px;
+            color:#B4B5AE;
+            font-family:var(--mono);
+            font-size:12.5px;
+            text-align:center;
+            max-width:220px;
+        }
+
+        .placeholder svg{ opacity:0.5; }
+
+        .viewfinder{
+            position:relative;
+            width:224px;
+            height:224px;
+        }
+
+        .corner{
+            position:absolute;
+            width:22px;
+            height:22px;
+            border:2.5px solid var(--accent);
+        }
+        .corner.tl{ top:-8px; left:-8px; border-right:none; border-bottom:none; border-top-left-radius:6px; }
+        .corner.tr{ top:-8px; right:-8px; border-left:none; border-bottom:none; border-top-right-radius:6px; }
+        .corner.bl{ bottom:-8px; left:-8px; border-right:none; border-top:none; border-bottom-left-radius:6px; }
+        .corner.br{ bottom:-8px; right:-8px; border-left:none; border-top:none; border-bottom-right-radius:6px; }
+
+        .scanline{
+            position:absolute;
+            left:-8px;
+            right:-8px;
+            height:2px;
+            background:var(--accent);
+            box-shadow:0 0 10px 1px var(--accent);
+            top:0;
+            opacity:0;
+            pointer-events:none;
+        }
+
+        .scanline.sweep{
+            animation:sweep 0.9s ease-in-out 1;
+        }
+
+        @keyframes sweep{
+            0%{ top:0; opacity:1; }
+            85%{ opacity:1; }
+            100%{ top:100%; opacity:0; }
+        }
+
+        #qr-svg rect.module{
+            opacity:0;
+            animation:appear 0.28s ease forwards;
+        }
+
+        @keyframes appear{
+            from{ opacity:0; }
+            to{ opacity:1; }
+        }
+
+        .actions{
+            display:flex;
+            justify-content:center;
+            margin-top:18px;
+        }
+
+        .download{
+            display:none;
+            font-family:var(--mono);
+            font-size:12.5px;
+            color:var(--ink);
+            background:none;
+            border:1px solid var(--line);
+            border-radius:8px;
+            padding:9px 16px;
+            text-decoration:none;
+            letter-spacing:0.02em;
+        }
+        .download:hover{ border-color:var(--ink); }
+        .download.visible{ display:inline-flex; align-items:center; gap:6px; }
+
+        footer{
+            margin-top:22px;
+            text-align:center;
+        }
+        footer p{
+            font-size:12px;
+            color:var(--ink-soft);
+            margin:0;
+        }
+
+        @media (max-width:420px){
+            .wordmark{ font-size:24px; }
+            .viewfinder{ width:190px; height:190px; }
+        }
+
+        @media (prefers-reduced-motion: reduce){
+            .scanline.sweep{ animation:none; }
+            #qr-svg rect.module{ animation:none; opacity:1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="wrap">
+    <header>
+        <p class="eyebrow">Leitura instantânea</p>
+        <h1 class="wordmark">Create<span>QR</span>CODE</h1>
+        <p class="tagline">Cole um link. Receba um código pronto para escanear.</p>
+    </header>
+
+    <form id="qr-form" novalidate>
+        <input
+                type="text"
+                id="qr-link"
+                name="link"
+                placeholder="https://seu-link-aqui.com"
+                autocomplete="off"
+                autocapitalize="off"
+                spellcheck="false"
+        >
+        <button type="button" onclick="enviar()">Gerar</button>
+    </form>
+    <p class="error" id="error-msg"></p>
+
+    <div class="stage empty" id="stage">
+
+        <div class="placeholder">
+            <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+                <rect x="4" y="4" width="12" height="12" stroke="currentColor" stroke-width="2"/>
+                <rect x="24" y="4" width="12" height="12" stroke="currentColor" stroke-width="2"/>
+                <rect x="4" y="24" width="12" height="12" stroke="currentColor" stroke-width="2"/>
+                <rect x="24" y="24" width="4" height="4" fill="currentColor"/>
+                <rect x="32" y="32" width="4" height="4" fill="currentColor"/>
+                <rect x="24" y="32" width="4" height="4" fill="currentColor"/>
+                <rect x="32" y="24" width="4" height="4" fill="currentColor"/>
+            </svg>
+
+            <span>O código aparece aqui</span>
+        </div>
+
+
+        <div class="viewfinder" id="viewfinder">
+
+            <div class="corner tl"></div>
+            <div class="corner tr"></div>
+            <div class="corner bl"></div>
+            <div class="corner br"></div>
+
+            <div class="scanline" id="scanline"></div>
+
+            <img id="qr-image" src="/qrcode.png" width="224" height="224">
+        </div>
+
+    </div>
+
+    <div class="actions">
+        <a href="#" class="download" id="download-btn" download="qrcode.png">
+            ↓ Baixar PNG
+        </a>
+    </div>
+
+    <footer>
+        <p>Tudo acontece no seu navegador — nenhum link é enviado a servidores.</p>
+    </footer>
+</div>
+
+
+<script>
+    async function enviar() {
+        const link = document.getElementById("qr-link").value
+
+        if(link.trim() === ""){
+            alert("Digite um link");
+            return;
+        }
+
+        const resposta = await fetch("/qrcodecreation", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                link: link
+            })
+        });
+
+        const imagem = await resposta.text();
+
+        document.getElementById("qr-image").src = imagem + "?v=" + Date.now();
+        document.getElementById("stage").classList.remove("empty");
+
+    }
+</script>
+
+</body>
+</html>
